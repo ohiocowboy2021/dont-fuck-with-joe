@@ -10,6 +10,7 @@
   const startScreen = document.getElementById("start-screen");
   const startBtn = document.getElementById("start-btn");
   const newRoundBtn = document.getElementById("new-round-btn");
+  const musicToggle = document.getElementById("music-toggle");
   const janettePopup = document.getElementById("janette-popup");
   const messageEl = document.getElementById("message");
   const titleJoe = document.querySelector(".title-joe");
@@ -20,6 +21,7 @@
   const sfxHit = document.getElementById("sfx-hit");
   const sfxJanette = document.getElementById("sfx-janette");
   const sfxThrow = document.getElementById("sfx-throw");
+  const bgm = document.getElementById("bgm");
 
   let width = 0;
   let height = 0;
@@ -35,6 +37,7 @@
   let janetteTimer = 0;
   let audioCtx = null;
   let audioReady = false;
+  let musicMuted = loadMusicMuted();
 
   const JANETTE_DURATION = 2200;
   const PROJECTILE_GRAVITY = 1000; // pixels per second squared
@@ -81,7 +84,9 @@
     baseSpeed: 48,
     facing: 1,
     shake: 0,
-    hitFlash: 0
+    hitFlash: 0,
+    dashTimer: 0,
+    dashCooldown: 0
   };
 
   const projectileTypes = [
@@ -116,6 +121,56 @@
       window.localStorage.setItem("dfwj-high", String(highScore));
     } catch (_) {
       // Storage can be blocked in private browsing; play continues without persistence.
+    }
+  }
+
+  function loadMusicMuted() {
+    try {
+      return window.localStorage.getItem("dfwj-music-muted") === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function saveMusicMuted() {
+    try {
+      window.localStorage.setItem("dfwj-music-muted", String(musicMuted));
+    } catch (_) {
+      // Music controls still work when storage is unavailable.
+    }
+  }
+
+  function syncMusicControl() {
+    bgm.muted = musicMuted;
+    musicToggle.textContent = musicMuted ? "MUSIC: OFF" : "MUSIC: ON";
+    musicToggle.setAttribute("aria-pressed", String(musicMuted));
+    musicToggle.setAttribute("aria-label", musicMuted ? "Unmute soundtrack" : "Mute soundtrack");
+    musicToggle.classList.toggle("is-muted", musicMuted);
+  }
+
+  async function playBackgroundMusic() {
+    if (musicMuted) return;
+
+    try {
+      bgm.volume = 0.22;
+      const playResult = bgm.play();
+      if (playResult && typeof playResult.catch === "function") {
+        await playResult;
+      }
+    } catch (_) {
+      // The game remains fully playable if music is blocked or unavailable.
+    }
+  }
+
+  function toggleMusic() {
+    musicMuted = !musicMuted;
+    syncMusicControl();
+    saveMusicMuted();
+
+    if (musicMuted) {
+      bgm.pause();
+    } else if (running) {
+      void playBackgroundMusic();
     }
   }
 
@@ -229,17 +284,31 @@
 
     try {
       const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(140, now);
-      osc.frequency.exponentialRampToValueAtTime(70, now + 0.35);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.42);
+      const thump = audioCtx.createOscillator();
+      const thumpGain = audioCtx.createGain();
+      const crack = audioCtx.createOscillator();
+      const crackGain = audioCtx.createGain();
+
+      thump.type = "sawtooth";
+      thump.frequency.setValueAtTime(165, now);
+      thump.frequency.exponentialRampToValueAtTime(58, now + 0.22);
+      thumpGain.gain.setValueAtTime(0.24, now);
+      thumpGain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+
+      crack.type = "square";
+      crack.frequency.setValueAtTime(920, now);
+      crack.frequency.exponentialRampToValueAtTime(270, now + 0.09);
+      crackGain.gain.setValueAtTime(0.08, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      thump.connect(thumpGain);
+      thumpGain.connect(audioCtx.destination);
+      crack.connect(crackGain);
+      crackGain.connect(audioCtx.destination);
+      thump.start(now);
+      crack.start(now);
+      thump.stop(now + 0.3);
+      crack.stop(now + 0.14);
     } catch (_) {
       // Sound must never interrupt play.
     }
@@ -250,19 +319,27 @@
 
     try {
       const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
+      const lead = audioCtx.createOscillator();
+      const harmony = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(680, now);
-      osc.frequency.linearRampToValueAtTime(920, now + 0.15);
-      osc.frequency.linearRampToValueAtTime(780, now + 0.55);
-      gain.gain.setValueAtTime(0.16, now);
-      gain.gain.linearRampToValueAtTime(0.21, now + 0.2);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
-      osc.connect(gain);
+      lead.type = "sine";
+      harmony.type = "triangle";
+      lead.frequency.setValueAtTime(680, now);
+      lead.frequency.linearRampToValueAtTime(980, now + 0.16);
+      lead.frequency.linearRampToValueAtTime(790, now + 0.62);
+      harmony.frequency.setValueAtTime(510, now);
+      harmony.frequency.linearRampToValueAtTime(735, now + 0.16);
+      harmony.frequency.linearRampToValueAtTime(590, now + 0.62);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.linearRampToValueAtTime(0.22, now + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.75);
+      lead.connect(gain);
+      harmony.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.75);
+      lead.start(now);
+      harmony.start(now);
+      lead.stop(now + 0.78);
+      harmony.stop(now + 0.78);
     } catch (_) {
       // Sound must never interrupt play.
     }
@@ -273,17 +350,52 @@
 
     try {
       const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(420, now);
-      osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.15);
+      const whoosh = audioCtx.createOscillator();
+      const snap = audioCtx.createOscillator();
+      const whooshGain = audioCtx.createGain();
+      const snapGain = audioCtx.createGain();
+      whoosh.type = "triangle";
+      snap.type = "square";
+      whoosh.frequency.setValueAtTime(520, now);
+      whoosh.frequency.exponentialRampToValueAtTime(170, now + 0.16);
+      snap.frequency.setValueAtTime(950, now);
+      snap.frequency.exponentialRampToValueAtTime(500, now + 0.055);
+      whooshGain.gain.setValueAtTime(0.075, now);
+      whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+      snapGain.gain.setValueAtTime(0.045, now);
+      snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      whoosh.connect(whooshGain);
+      whooshGain.connect(audioCtx.destination);
+      snap.connect(snapGain);
+      snapGain.connect(audioCtx.destination);
+      whoosh.start(now);
+      snap.start(now);
+      whoosh.stop(now + 0.18);
+      snap.stop(now + 0.07);
+    } catch (_) {
+      // Sound must never interrupt play.
+    }
+  }
+
+  function synthesizeLevelUp() {
+    if (!audioReady || !audioCtx) return;
+
+    try {
+      const now = audioCtx.currentTime;
+      [440, 554.37, 659.25].forEach((frequency, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const start = now + index * 0.075;
+        osc.type = "square";
+        osc.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.linearRampToValueAtTime(0.07, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + 0.25);
+      });
     } catch (_) {
       // Sound must never interrupt play.
     }
@@ -345,8 +457,13 @@
   }
 
   function levelSpeedMultiplier() {
-    // Makes levels 2–4 clearly faster while retaining room to react at higher levels.
-    return 1 + 0.72 * Math.pow(Math.max(0, level - 1), 1.05);
+    // Level 1 remains approachable; later levels accelerate sharply without becoming unfair.
+    return 1 + 0.95 * Math.pow(Math.max(0, level - 1), 1.12);
+  }
+
+  function currentHeadRadius() {
+    // A gradually smaller target rewards precision while retaining a fair visible hit area.
+    return joe.w * Math.max(0.34, 0.46 - (level - 1) * 0.018);
   }
 
   function triggerJanette() {
@@ -375,7 +492,16 @@
 
     const seconds = Math.min(dt, 50) / 1000;
     const halfW = joe.w * 0.42;
-    joe.x += joe.baseSpeed * levelSpeedMultiplier() * joe.facing * seconds;
+    joe.dashCooldown = Math.max(0, joe.dashCooldown - seconds);
+    joe.dashTimer = Math.max(0, joe.dashTimer - seconds);
+
+    if (level >= 2 && joe.dashTimer === 0 && joe.dashCooldown === 0) {
+      joe.dashTimer = Math.min(0.34, 0.16 + level * 0.018);
+      joe.dashCooldown = Math.max(0.95, 3.1 - level * 0.2);
+    }
+
+    const dashMultiplier = joe.dashTimer > 0 ? 1.75 + Math.min(level, 7) * 0.06 : 1;
+    joe.x += joe.baseSpeed * levelSpeedMultiplier() * dashMultiplier * joe.facing * seconds;
 
     if (joe.x < halfW + 20) {
       joe.x = halfW + 20;
@@ -396,7 +522,7 @@
         continue;
       }
 
-      projectile.vy += PROJECTILE_GRAVITY * seconds;
+      projectile.vy += PROJECTILE_GRAVITY * (1 + Math.min(level - 1, 7) * 0.055) * seconds;
       projectile.x += projectile.vx * seconds;
       projectile.y += projectile.vy * seconds;
       projectile.rotation += projectile.rotSpeed * seconds;
@@ -409,7 +535,7 @@
 
       const headX = joe.x;
       const headY = joe.y - joe.h * 0.18;
-      const headRadius = joe.w * 0.46; // Slightly friendlier than the original approximation.
+      const headRadius = currentHeadRadius();
 
       if (distance(projectile.x, projectile.y, headX, headY) < projectile.radius + headRadius) {
         projectile.alive = false;
@@ -425,10 +551,11 @@
         spawnHitParticles(projectile.x, projectile.y, projectile.color);
         playHitSound();
 
-        const nextLevel = Math.floor(hits / 5) + 1;
+        const nextLevel = Math.floor(hits / 4) + 1;
         if (nextLevel > level) {
           level = nextLevel;
-          showMessage(`LEVEL ${level}! Joe is moving faster.`, 1150);
+          synthesizeLevelUp();
+          showMessage(`LEVEL ${level}! FASTER. SMALLER. MEANER.`, 1250);
         } else if (hitStreak >= 3) {
           showMessage(`${hitStreak}x COMBO! +${gained}`, 850);
         }
@@ -692,6 +819,8 @@
     joe.facing = Math.random() > 0.5 ? 1 : -1;
     joe.shake = 0;
     joe.hitFlash = 0;
+    joe.dashTimer = 0;
+    joe.dashCooldown = 1.4;
     janetteTimer = 0;
     resetPointer();
     janettePopup.classList.add("hidden");
@@ -699,11 +828,13 @@
     updateUI();
     startScreen.classList.add("hidden");
     running = true;
+    void playBackgroundMusic();
     showMessage("DON'T FUCK WITH JOE.", 1050);
   }
 
   startBtn.addEventListener("click", startGame);
   newRoundBtn.addEventListener("click", startGame);
+  musicToggle.addEventListener("click", toggleMusic);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -712,6 +843,7 @@
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("orientationchange", resize, { passive: true });
 
+  syncMusicControl();
   updateUI();
   resize();
   window.requestAnimationFrame(loop);

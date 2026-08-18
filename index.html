@@ -16,6 +16,7 @@
       <div>High: <span id="highscore">0</span></div>
       <div>Hits: <span id="hits">0</span></div>
       <div>Level: <span id="level">1</span></div>
+      <button id="music-toggle" type="button" aria-pressed="false" aria-label="Mute soundtrack">MUSIC: ON</button>
       <button id="new-round-btn" type="button" aria-label="Start a new round">NEW ROUND</button>
     </div>
 
@@ -49,6 +50,7 @@
   <audio id="sfx-hit" preload="auto"></audio>
   <audio id="sfx-janette" preload="auto"></audio>
   <audio id="sfx-throw" preload="auto"></audio>
+  <audio id="bgm" src="assets/joe-hard-rock-loop.mp3" preload="metadata" loop></audio>
 
   <script src="js/game.js"></script>
 </body>
