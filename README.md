@@ -9,7 +9,7 @@ Press **START THROWING**, then use either control style:
 - **Tap or click** for a quick throw.
 - **Tap/click and drag** to choose an aim point and add power.
 - Hit Joe's head to score. Every four hits raises the level; Joe accelerates, dashes from level 2 onward, becomes a smaller target, and your throws drop more quickly.
-- **MUSIC: ON/OFF** starts muted or unmuted according to your last choice. The game includes an original hard-rock instrumental soundtrack and synthesized throw, hit, level-up, and Janette effects.
+- **MUSIC: ON/OFF** starts muted or unmuted according to your last choice. The game includes an original hard-rock instrumental soundtrack, synthesized throw/hit/level-up effects, Joe’s spoken “Duh, huh?” on each hit, and Janette’s high-pitched “Jooooeeeeee!” on her popup.
 - The **New Round** button resets the current score while preserving the high score in local storage when the browser permits it.
 
 The game uses Pointer Events and is designed for phones, tablets, and desktop browsers. It has no backend, analytics, tracking, login, or external dependencies.
@@ -26,7 +26,9 @@ dont-fuck-with-joe/
 └── assets/
     ├── joe.jpg                 # Joe photo
     ├── janette.jpg             # Janette photo
-    └── joe-hard-rock-loop.mp3  # Original looping gameplay soundtrack
+    ├── joe-hard-rock-loop.mp3  # Original looping gameplay soundtrack
+    ├── joe-duh-huh.wav         # Joe's spoken hit reaction
+    └── janette-joeeeeee.wav    # Janette's spoken popup reaction
 ```
 
 > The game is a plain client-side HTML, CSS, and JavaScript project. It is intentionally framework-free and can be hosted as static files.

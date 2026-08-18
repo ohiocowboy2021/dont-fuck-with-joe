@@ -21,6 +21,8 @@
   const sfxHit = document.getElementById("sfx-hit");
   const sfxJanette = document.getElementById("sfx-janette");
   const sfxThrow = document.getElementById("sfx-throw");
+  const joeLine = document.getElementById("sfx-joe-line");
+  const janetteLine = document.getElementById("sfx-janette-line");
   const bgm = document.getElementById("bgm");
 
   let width = 0;
@@ -279,6 +281,20 @@
     fallback();
   }
 
+  function playCharacterLine(audio, volume) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = volume;
+      const playResult = audio.play();
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => {});
+      }
+    } catch (_) {
+      // Character speech is an enhancement; game interaction must remain uninterrupted.
+    }
+  }
+
   function synthesizeHit() {
     if (!audioReady || !audioCtx) return;
 
@@ -403,10 +419,12 @@
 
   function playHitSound() {
     playOptionalAudio(sfxHit, synthesizeHit);
+    playCharacterLine(joeLine, 0.9);
   }
 
   function playJanetteSound() {
     playOptionalAudio(sfxJanette, synthesizeJanette);
+    playCharacterLine(janetteLine, 1);
   }
 
   function playThrowSound() {
