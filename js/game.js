@@ -281,10 +281,40 @@
     fallback();
   }
 
+  // Some mobile browsers only allow media elements that were started directly by a user gesture.
+  // Prime both lines silently inside Start Throwing so later hit/popup events remain audible.
+  function unlockCharacterLinesFromGesture() {
+    [joeLine, janetteLine].forEach((audio) => {
+      try {
+        const originalVolume = audio.volume || 1;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        audio.volume = 0;
+
+        const restore = () => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = originalVolume;
+        };
+        const playResult = audio.play();
+
+        if (playResult && typeof playResult.then === "function") {
+          playResult.then(() => window.setTimeout(restore, 30)).catch(restore);
+        } else {
+          restore();
+        }
+      } catch (_) {
+        // A browser can decline this enhancement; later playback still makes a best effort.
+      }
+    });
+  }
+
   function playCharacterLine(audio, volume) {
     try {
       audio.pause();
       audio.currentTime = 0;
+      audio.muted = false;
       audio.volume = volume;
       const playResult = audio.play();
       if (playResult && typeof playResult.catch === "function") {
@@ -826,6 +856,7 @@
   }
 
   function startGame() {
+    unlockCharacterLinesFromGesture();
     void initializeAudioFromGesture();
     score = 0;
     hits = 0;
