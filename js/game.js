@@ -88,7 +88,11 @@
     shake: 0,
     hitFlash: 0,
     dashTimer: 0,
-    dashCooldown: 0
+    dashCooldown: 0,
+    verticalOffset: 0,
+    targetVerticalOffset: 0,
+    verticalTimer: 0,
+    verticalPhase: Math.random() * Math.PI * 2
   };
 
   const projectileTypes = [
@@ -180,6 +184,19 @@
     return Math.random() * (max - min) + min;
   }
 
+  function chooseVerticalTarget() {
+    const maxOffset = Math.max(26, Math.min(height * 0.17, joe.h * 0.82));
+    let nextOffset = randomBetween(-maxOffset, maxOffset);
+
+    // Avoid choosing nearly the same height twice so Joe visibly changes lanes.
+    if (Math.abs(nextOffset - joe.targetVerticalOffset) < maxOffset * 0.34) {
+      nextOffset = nextOffset < 0 ? maxOffset * 0.72 : -maxOffset * 0.72;
+    }
+
+    joe.targetVerticalOffset = nextOffset;
+    joe.verticalTimer = randomBetween(1.15, 2.45);
+  }
+
   function distance(x1, y1, x2, y2) {
     return Math.hypot(x2 - x1, y2 - y1);
   }
@@ -214,6 +231,9 @@
 
     joe.w = Math.max(118, Math.min(210, width * 0.25));
     joe.h = joe.w * 1.33;
+    joe.verticalOffset = 0;
+    joe.targetVerticalOffset = 0;
+    joe.verticalTimer = 0;
     joe.y = height * 0.32;
 
     const sidePadding = joe.w * 0.46 + 20;
@@ -559,7 +579,17 @@
       joe.facing = -1;
     }
 
-    joe.y = height * 0.32 + Math.sin(performance.now() / 450) * 6;
+    joe.verticalTimer -= seconds;
+    if (joe.verticalTimer <= 0) {
+      chooseVerticalTarget();
+    }
+
+    const verticalFollow = Math.min(1, seconds * (1.15 + level * 0.14));
+    joe.verticalOffset += (joe.targetVerticalOffset - joe.verticalOffset) * verticalFollow;
+    const bob = Math.sin(performance.now() / 310 + joe.verticalPhase) * (6 + Math.min(level, 6) * 1.4);
+    const minY = joe.h * 0.56;
+    const maxY = height - joe.h * 0.82;
+    joe.y = Math.min(maxY, Math.max(minY, height * 0.32 + joe.verticalOffset + bob));
     joe.shake = Math.max(0, joe.shake - 90 * seconds);
     joe.hitFlash = Math.max(0, joe.hitFlash - dt);
 
@@ -870,6 +900,10 @@
     joe.hitFlash = 0;
     joe.dashTimer = 0;
     joe.dashCooldown = 1.4;
+    joe.verticalOffset = 0;
+    joe.targetVerticalOffset = 0;
+    joe.verticalTimer = 0;
+    joe.verticalPhase = Math.random() * Math.PI * 2;
     janetteTimer = 0;
     resetPointer();
     janettePopup.classList.add("hidden");
